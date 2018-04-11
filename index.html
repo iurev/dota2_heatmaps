@@ -102,7 +102,7 @@
                         showHeroes()
                     })
 
-                wrappers
+                var bgs = wrappers
                     .append('rect')
                     .style('fill', function(_, i) {
                         if (i == activeHero) {
@@ -112,6 +112,9 @@
                     })
                     .attr('height', selectHeight)
                     .attr('width', fullHeroWidth)
+                    .attr('fill-opacity', 0)
+
+                bgs.transition().duration(300).attr("fill-opacity", 1)
 
                 wrappers
                     .append('image')
@@ -166,8 +169,10 @@
 
                 cells.attr('cy', size / 2)
                     .attr('cx', function(d, i) { return xScale(i) + size/2; })
-                    .attr('r', size / 2)
+                    .attr('r', 0)
                     .style('fill', function(d, i) { return colorScale(d) })
+
+                cells.transition().duration(300).attr("r", size / 2);
             }
 
             var showLegend = function() {
