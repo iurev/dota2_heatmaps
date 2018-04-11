@@ -1,9 +1,206 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+</head>
 <body>
+    <style>
+        body {
+            background-color: rgb(51, 51, 51);
+            background-image: url(http://cdn.dota2.com/apps/dota2/images/blog/play/bg_06.jpg);
+            background-size: cover;
+            font-family: 'Open Sans', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+        h1 {
+            font-style: normal;
+            font-weight: 800;
+            color: #fff;
+            margin: 0 0 20px 0;
+        }
+        .heatmap-wrapper {
+            background: #717e8e;
+            padding: 30px 60px;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+        }
+        .hero { cursor: pointer; } 
+    </style>
 
-<h1>My First Heading</h1>
-<p>My first paragraph.</p>
-<script src="https://d3js.org/d3.v5.min.js"></script>
+    <div class="heatmap-wrapper">
+        <h1>
+            Clicks heatmaps
+        </h1>
+    </div>
+    <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script>
+        d3.json('./data.json', function(r) {
+            var activeHero = 0;
+            var size = 10;
+            var data = r[activeHero].heatmap;
+
+            var maxY = data.length;
+            var maxX = data[0].length;
+
+            var width = maxX * size;
+            var height = maxY * size;
+            var gradientWidth = 40;
+            var margin = 20;
+            var vmargin = 15;
+
+            selectHeight = 40;
+
+            var heroWidth = 59;
+            var heroHeight = 33;
+
+            var max = data.map(function(row){ return Math.max.apply(Math, row); });
+            var max = Math.max.apply(null, max);
+
+            var colorScale = d3.scale.linear()
+                    .domain([0, max / 30])
+                    .range(["rgb(0, 99, 255)", "white"]);
+
+            var svg = d3.select('.heatmap-wrapper')
+                .append('svg')
+                .attr('width', gradientWidth + width + margin)
+                .attr('height', height + selectHeight + vmargin)
+
+            var showHeroes = function() {
+                svg.selectAll("g.heroes").remove()
+                var wrapper = svg.append('g')
+                    .attr('class', 'heroes')
+
+                wrapper.append('rect')
+                    .attr('class', 'heroes-bg')
+                    .attr('width', gradientWidth + width + margin)
+                    .attr('height', selectHeight)
+                    .style('fill', 'white')
+
+                var fullHeroWidth = (gradientWidth + width + margin) / r.length
+
+                var wrappers = wrapper
+                    .selectAll('g')
+                    .data(r)
+                    .enter()
+                    .append('g')
+                    .attr('class', 'hero')
+                    .attr('transform', function(_, i) {
+                        return 'translate(' + i * fullHeroWidth + ', 0)';
+                    })
+                    .on('click', function(d, i) {
+                        activeHero = i
+                        data = r[activeHero].heatmap
+                        svg.selectAll("g.heatmap").remove()
+                        showHetmap()
+                        showHeroes()
+                    })
+
+                wrappers
+                    .append('rect')
+                    .style('fill', function(_, i) {
+                        if (i == activeHero) {
+                            return '#659dff'
+                        }
+                        return 'transparent';
+                    })
+                    .attr('height', selectHeight)
+                    .attr('width', fullHeroWidth)
+
+                wrappers
+                    .append('image')
+                    .attr('xlink:href', function(d) {
+                        return d.image
+                    })
+                    .attr('x', 8.6)
+                    .attr('y', 8)
+                    .attr('width', heroWidth / 1.5)
+                    .attr('height', heroHeight / 1.5)
+
+            }
+
+            var showHetmap = function() {
+                var heatmap = svg.append('g')
+                    .attr('class', 'heatmap')
+
+                heatmap.append('rect')
+                    .attr('fill', 'rgb(0, 99, 255)')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('x', margin + gradientWidth)
+                    .attr('y', vmargin + selectHeight)
+
+                var rows = heatmap.selectAll('g')
+                    .data(data)
+
+                rows.enter()
+                    .append('g')
+                    .attr('class', 'row')
+                    .attr("transform", function (d, i) {
+                        return "translate(" + (gradientWidth + margin) + ", " + (i * size + selectHeight + vmargin) + ")"
+                    })
+
+                var cells = rows.selectAll('circle')
+                    .data(function(d, _) { return d; })
+                    .attr('class', 'cells')
+
+                cells.enter()
+                    .append('circle')
+
+                var xElements = d3.range(0, maxX);
+                var yElements = d3.range(0, maxY);
+
+                var xScale = d3.scale.ordinal()
+                    .domain(xElements)
+                    .rangeBands([0, xElements.length * size]);
+
+                var yScale = d3.scale.ordinal()
+                    .domain(yElements)
+                    .rangeBands([0, yElements.length * size]);
+
+                cells.attr('cy', size / 2)
+                    .attr('cx', function(d, i) { return xScale(i) + size/2; })
+                    .attr('r', size / 2)
+                    .style('fill', function(d, i) { return colorScale(d) })
+            }
+
+            var showLegend = function() {
+                var legend = svg.append("defs")
+                    .append("svg:linearGradient")
+                    .attr("id", "gradient")
+                    .attr("x1", "100%")
+                    .attr("y1", "100%")
+                    .attr("x2", "0%")
+                    .attr("y2", "100%")
+                    .attr("spreadMethod", "pad")
+                    .attr('gradientTransform', "rotate(90)")
+
+                legend.append("stop")
+                    .attr("offset", "0%")
+                    .attr("stop-color", colorScale(0))
+                    .attr("stop-opacity", 1);
+
+                legend.append("stop")
+                    .attr("offset", "100%")
+                    .attr("stop-color", colorScale(max))
+                    .attr("stop-opacity", 1);
+
+                svg.append("rect")
+                    .attr("width", gradientWidth)
+                    .attr("height", height)
+                    .style("fill", "url(#gradient)")
+                    .attr('transform', 'translate(0, ' + (selectHeight + vmargin) + ')')
+            }
+
+            showHeroes()
+            showLegend()
+            showHetmap()
+        })
+    </script>
 </body>
 </html>
